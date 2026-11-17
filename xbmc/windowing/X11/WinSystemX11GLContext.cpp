@@ -22,6 +22,7 @@
 #include "cores/VideoPlayer/Process/X11/ProcessInfoX11.h"
 #include "cores/VideoPlayer/VideoReferenceClock.h"
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
+#include "cores/VideoPlayer/VideoRenderers/LibplaceboRenderer.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "guilib/DispResource.h"
 #include "rendering/gl/ScreenshotSurfaceGL.h"
@@ -316,7 +317,11 @@ bool CWinSystemX11GLContext::RefreshGLContext(
   RETRO::CRPProcessInfoX11::RegisterRendererFactory(new RETRO::CRendererFactoryOpenGL);
   CDVDFactoryCodec::ClearHWAccels();
   VIDEOPLAYER::CRendererFactory::ClearRenderer();
+#if defined(HAS_PLACEBO)
+  CPlaceboRendererGL::Register();
+#else
   CLinuxRendererGL::Register();
+#endif
 
   CScreenshotSurfaceGL::Register();
 

@@ -124,7 +124,7 @@ CBaseRenderer* CLinuxRendererGLES::Create(CVideoBuffer *buffer)
 
 bool CLinuxRendererGLES::Register()
 {
-  VIDEOPLAYER::CRendererFactory::RegisterRenderer("default", CLinuxRendererGLES::Create);
+  VIDEOPLAYER::CRendererFactory::RegisterRenderer("linuxrenderergles", CLinuxRendererGLES::Create);
   return true;
 }
 

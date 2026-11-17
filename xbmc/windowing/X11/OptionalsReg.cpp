@@ -19,6 +19,9 @@
 #if defined(HAS_GL)
 #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererVAAPIGL.h"
 #endif
+#if defined(HAS_PLACEBO)
+#include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererPlaceboVAAPI.h"
+#endif
 #if defined(HAS_GLES)
 #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererVAAPIGLES.h"
 #endif
@@ -72,9 +75,13 @@ void VAAPIRegisterRenderGL(CVaapiProxy* winSystem, bool& general, bool& deepColo
 {
   EGLDisplay eglDpy = winSystem->eglDisplay;
   VADisplay vaDpy = vaGetDisplay(winSystem->dpy);
+#if defined(HAS_PLACEBO)
+  CRendererPlaceboVAAPI::Register(winSystem, vaDpy, eglDpy, general, deepColor);
+#else
   CRendererVAAPIGL::Register(winSystem, vaDpy, eglDpy, general, deepColor);
+#endif // HAS_PLACEBO
 }
-#endif
+#endif // HAS_GL
 
 #if defined(HAS_GLES)
 void VAAPIRegisterRenderGLES(CVaapiProxy* winSystem, bool& general, bool& deepColor)

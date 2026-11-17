@@ -504,11 +504,13 @@ void CRenderManager::CreateRenderer()
 
       m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer(id, buffer);
       if (m_pRenderer)
-      {
         return;
-      }
     }
-    m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer("default", buffer);
+
+    // Hardware renderers only accept their own buffer types; use the generic
+    // renderer for software-decoded pictures.
+    if (!m_pRenderer)
+      m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer("default", buffer);
   }
 }
 

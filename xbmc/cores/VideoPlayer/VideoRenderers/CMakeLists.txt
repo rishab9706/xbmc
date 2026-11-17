@@ -31,10 +31,16 @@ if(TARGET ${APP_NAME_LC}::OpenGl OR TARGET ${APP_NAME_LC}::OpenGLES)
 endif()
 
 if(TARGET ${APP_NAME_LC}::OpenGl)
-  list(APPEND SOURCES LinuxRendererGL.cpp
-                      OverlayRendererGL.cpp)
-  list(APPEND HEADERS LinuxRendererGL.h
-                      OverlayRendererGL.h)
+  if(TARGET ${APP_NAME_LC}::Libplacebo)
+    list(APPEND SOURCES LibplaceboRenderer.cpp
+                        Placebo/PlaceboAV.c)
+    list(APPEND HEADERS LibplaceboRenderer.h)
+  else()
+    list(APPEND SOURCES LinuxRendererGL.cpp)
+    list(APPEND HEADERS LinuxRendererGL.h)
+  endif()
+  list(APPEND SOURCES OverlayRendererGL.cpp)
+  list(APPEND HEADERS OverlayRendererGL.h)
 endif()
 
 if(TARGET ${APP_NAME_LC}::OpenGLES AND ("android" IN_LIST CORE_PLATFORM_NAME_LC OR
@@ -48,6 +54,12 @@ if(TARGET ${APP_NAME_LC}::OpenGLES AND ("android" IN_LIST CORE_PLATFORM_NAME_LC 
                       OverlayRendererGLES.cpp)
   list(APPEND HEADERS LinuxRendererGLES.h
                       OverlayRendererGLES.cpp)
+endif()
+
+if(TARGET ${APP_NAME_LC}::Libplacebo)
+  list(APPEND SOURCES LibplaceboRenderer.cpp
+                      Placebo/PlaceboAV.c)
+  list(APPEND HEADERS LibplaceboRenderer.h)
 endif()
 
 core_add_library(videorenderers)

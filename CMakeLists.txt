@@ -285,6 +285,7 @@ set(optional_deps Alsa>=1.0.27
                   DBus
                   Iso9660pp>=2.1.0
                   LCMS2>=2.10
+                  Libplacebo
                   LircClient
                   MDNS
                   MicroHttpd>=0.9.40

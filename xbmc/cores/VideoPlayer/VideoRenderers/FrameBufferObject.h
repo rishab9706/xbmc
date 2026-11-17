@@ -65,6 +65,9 @@ public:
   // Return the internally created texture ID
   GLuint Texture() const { return m_texid; }
 
+  // Return the internally created FBO ID
+  GLuint FBO() const { return m_fbo; }
+
   // Begin rendering to FBO
   bool BeginRender();
   // Finish rendering to FBO
