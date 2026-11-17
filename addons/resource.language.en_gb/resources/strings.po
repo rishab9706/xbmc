@@ -26690,3 +26690,21 @@ msgstr ""
 msgctxt "#40866"
 msgid "What to report for a title whose picture changes shape partway through."
 msgstr ""
+
+#. label of a setting, tone mapping method
+#: xbmc/video/dialogs/GUIDialogVideoSettings.cpp
+msgctxt "#40867"
+msgid "BT2390"
+msgstr ""
+
+#. label of a setting, tone mapping method
+#: xbmc/video/dialogs/GUIDialogVideoSettings.cpp
+msgctxt "#40868"
+msgid "ST2094-10"
+msgstr ""
+
+#. label of a setting, tone mapping method
+#: xbmc/video/dialogs/GUIDialogVideoSettings.cpp
+msgctxt "#40869"
+msgid "ST2094-40"
+msgstr ""

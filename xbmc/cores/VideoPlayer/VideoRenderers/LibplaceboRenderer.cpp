@@ -1831,6 +1831,15 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
       case VS_TONEMAPMETHOD_HABLE:
         colorMapParams.tone_mapping_function = &pl_tone_map_hable;
         break;
+      case VS_TONEMAPMETHOD_BT2390:
+        colorMapParams.tone_mapping_function = &pl_tone_map_bt2390;
+        break;
+      case VS_TONEMAPMETHOD_ST2094_10:
+        colorMapParams.tone_mapping_function = &pl_tone_map_st2094_10;
+        break;
+      case VS_TONEMAPMETHOD_ST2094_40:
+        colorMapParams.tone_mapping_function = &pl_tone_map_st2094_40;
+        break;
       case VS_TONEMAPMETHOD_OFF:
       default:
         colorMapParams.tone_mapping_function = &pl_tone_map_clip;

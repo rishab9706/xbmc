@@ -500,6 +500,9 @@ void CGUIDialogVideoSettings::InitializeSettings()
     entries.emplace_back(36555, VS_TONEMAPMETHOD_REINHARD);
     entries.emplace_back(36557, VS_TONEMAPMETHOD_ACES);
     entries.emplace_back(36558, VS_TONEMAPMETHOD_HABLE);
+    entries.emplace_back(40867, VS_TONEMAPMETHOD_BT2390);
+    entries.emplace_back(40868, VS_TONEMAPMETHOD_ST2094_10);
+    entries.emplace_back(40869, VS_TONEMAPMETHOD_ST2094_40);
 
     AddSpinner(groupVideo, SETTING_VIDEO_TONEMAP_METHOD, 36553, SettingLevel::Basic,
                videoSettings.m_ToneMapMethod, entries, false, visible);
