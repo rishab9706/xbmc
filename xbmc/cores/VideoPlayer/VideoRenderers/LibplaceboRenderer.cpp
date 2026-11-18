@@ -1973,6 +1973,10 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
       target_csp = csp;
     }
 
+    // Contrast Recovery
+    colorMapParams.contrast_smoothness = 3.5f;
+    colorMapParams.contrast_recovery = 0.4f;
+
     render_params.color_map_params = &colorMapParams;
 
     if (!pl_render_image(m_renderer, &frame, &target_frame, &render_params))
