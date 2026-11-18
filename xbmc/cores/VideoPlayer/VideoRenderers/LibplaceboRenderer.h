@@ -19,6 +19,7 @@
 extern "C" {
 #include <libavutil/mastering_display_metadata.h>
 #include <libavutil/pixdesc.h>
+#include <libplacebo/cache.h>
 #include <libplacebo/opengl.h>
 #include <libplacebo/renderer.h>
 }
@@ -154,6 +155,7 @@ protected:
   bool EnsureRenderTarget();
 
   bool InitPlacebo();
+  void InitCache();
 
   // Icc Profile
   void InitIcc();
@@ -192,6 +194,12 @@ protected:
   pl_renderer m_renderer = NULL;
   pl_log m_log = NULL;
   pl_swapchain m_swapchain = NULL;
+
+  // Persistent shader and 3DLUT caches
+  pl_cache m_shaderCache = NULL;
+  pl_cache m_iccCache = NULL;
+  std::string m_shaderCacheDir;
+  std::string m_iccCacheDir;
 
   // Offscreen render target holding the last rendered video frame
   CFrameBufferObject m_targetFbo;

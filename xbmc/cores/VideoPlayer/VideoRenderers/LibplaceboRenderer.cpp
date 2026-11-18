@@ -1,19 +1,26 @@
 #include "LibplaceboRenderer.h"
 
+#include "FileItemList.h"
 #include "RenderFactory.h"
 #include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
+#include "filesystem/Directory.h"
+#include "filesystem/File.h"
+#include "filesystem/SpecialProtocol.h"
 #include "rendering/GLExtensions.h"
 #include "rendering/gl/RenderSystemGL.h"
 #include "utils/GLUtils.h"
+#include "utils/URIUtils.h"
 #include "utils/log.h"
 #include "windowing/GraphicContext.h"
 #include "windowing/WinSystem.h"
 #include "settings/SettingsComponent.h"
 #include "settings/Settings.h"
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 #define PBO_OFFSET 16
 
@@ -32,10 +39,59 @@ extern "C" {
 
 namespace
 {
+constexpr int64_t SHADER_CACHE_LIMIT = 16 << 20;
+/* The gamut-mapping 3DLUT alone is about 3 MB. */
+constexpr int64_t SHADER_CACHE_OBJECT_LIMIT = 8 << 20;
+/* Large enough for the biggest 3DLUT Kodi allows (256^3, 16-bit). */
+constexpr int64_t ICC_CACHE_LIMIT = 128 << 20;
+
 bool IsSemiPlanarFormat(AVPixelFormat format)
 {
   return format == AV_PIX_FMT_NV12 || format == AV_PIX_FMT_P010 ||
          format == AV_PIX_FMT_P012 || format == AV_PIX_FMT_P016;
+}
+
+/* libplacebo never removes stale cache files, so enforce the size limit here by
+ * deleting the least recently written entries. */
+void PruneCacheDirectory(const std::string& dir, int64_t maxSize)
+{
+  CFileItemList items;
+  if (!XFILE::CDirectory::GetDirectory(dir, items, "", XFILE::DIR_FLAG_NO_FILE_DIRS))
+    return;
+
+  struct CacheFile
+  {
+    std::string path;
+    int64_t size;
+    int64_t mtime;
+  };
+
+  std::vector<CacheFile> files;
+  int64_t totalSize = 0;
+  for (const auto& item : items)
+  {
+    if (item->IsFolder())
+      continue;
+
+    files.push_back({item->GetPath(), item->GetSize(),
+                     item->GetProperty(XFILE::DIR_PROPERTY_STAT_MTIME).asInteger(0)});
+    totalSize += item->GetSize();
+  }
+
+  if (totalSize <= maxSize)
+    return;
+
+  std::sort(files.begin(), files.end(),
+            [](const CacheFile& a, const CacheFile& b) { return a.mtime < b.mtime; });
+
+  for (const auto& file : files)
+  {
+    if (totalSize <= maxSize)
+      break;
+
+    if (XFILE::CFile::Delete(file.path))
+      totalSize -= file.size;
+  }
 }
 
 /* libplacebo leaves the GL context in its own state (unbound VAO, framebuffer 0,
@@ -295,6 +351,10 @@ void CPlaceboRendererGL::InitIcc()
   m_iccParams.use_vcgt = true;
   m_iccParams.vcgt_size = 256;
   m_iccParams.intent = PL_INTENT_RELATIVE_COLORIMETRIC;
+  if (m_iccCache)
+  {
+    m_iccParams.cache = m_iccCache;
+  }
 
   if (!pl_icc_update(m_log, &m_iccProfile, &p, &m_iccParams))
   {
@@ -345,6 +405,10 @@ void CPlaceboRendererGL::CheckIccParams()
   m_iccParams.size_r = m_iccParams.size_g = m_iccParams.size_b = m_iccLutSize;
   m_iccParams.intent = PL_INTENT_RELATIVE_COLORIMETRIC;
   m_iccParams.use_vcgt = true;
+  if (m_iccCache)
+  {
+    m_iccParams.cache = m_iccCache;
+  }
 
   if (!pl_icc_update(m_log, &m_iccProfile, &p, &m_iccParams))
   {
@@ -352,6 +416,51 @@ void CPlaceboRendererGL::CheckIccParams()
     m_iccPath.clear();
     m_iccLutSize = 0;
   }
+}
+
+void CPlaceboRendererGL::InitCache()
+{
+  const std::string base = URIUtils::AddFileToFolder(
+      CSpecialProtocol::TranslatePath("special://temp/"), "placebo");
+  m_shaderCacheDir = URIUtils::AddFileToFolder(base, "shader");
+  m_iccCacheDir = URIUtils::AddFileToFolder(base, "icc");
+
+  if (!XFILE::CDirectory::Create(m_shaderCacheDir) ||
+      !XFILE::CDirectory::Create(m_iccCacheDir))
+  {
+    CLog::Log(LOGWARNING, "PlaceboRendererGL: Failed to create cache directory {}", base);
+    m_shaderCacheDir.clear();
+    m_iccCacheDir.clear();
+    return;
+  }
+
+  URIUtils::AddSlashAtEnd(m_shaderCacheDir);
+  URIUtils::AddSlashAtEnd(m_iccCacheDir);
+
+  PruneCacheDirectory(m_shaderCacheDir, SHADER_CACHE_LIMIT);
+  PruneCacheDirectory(m_iccCacheDir, ICC_CACHE_LIMIT);
+
+  struct pl_cache_params shaderParams = {};
+  shaderParams.log = m_log;
+  shaderParams.max_object_size = SHADER_CACHE_OBJECT_LIMIT;
+  shaderParams.max_total_size = SHADER_CACHE_LIMIT;
+  shaderParams.set = pl_cache_set_file;
+  shaderParams.get = pl_cache_get_file;
+  shaderParams.priv = m_shaderCacheDir.data();
+  m_shaderCache = pl_cache_create(&shaderParams);
+
+  struct pl_cache_params iccParams = {};
+  iccParams.log = m_log;
+  iccParams.max_object_size = ICC_CACHE_LIMIT;
+  iccParams.max_total_size = ICC_CACHE_LIMIT;
+  iccParams.set = pl_cache_set_file;
+  iccParams.get = pl_cache_get_file;
+  iccParams.priv = m_iccCacheDir.data();
+  m_iccCache = pl_cache_create(&iccParams);
+
+  pl_gpu_set_cache(m_gpu, m_shaderCache);
+
+  CLog::Log(LOGDEBUG, "PlaceboRendererGL: Using shader and LUT cache in {}", base);
 }
 
 bool CPlaceboRendererGL::InitPlacebo()
@@ -382,6 +491,8 @@ bool CPlaceboRendererGL::InitPlacebo()
     return false;
   }
   m_gpu = m_opengl->gpu;
+
+  InitCache();
 
   m_renderer = pl_renderer_create(m_log, m_gpu);
   if (!m_renderer) 
@@ -928,6 +1039,16 @@ void CPlaceboRendererGL::UnInit()
     pl_log_destroy(&m_log);
   if (m_iccProfile)
     pl_icc_close(&m_iccProfile);
+
+  if (m_shaderCache)
+    CLog::Log(LOGDEBUG, "PlaceboRendererGL: Shader cache holds {} objects",
+              pl_cache_objects(m_shaderCache));
+  pl_cache_destroy(&m_iccCache);
+  pl_cache_destroy(&m_shaderCache);
+  m_iccParams.cache = nullptr;
+  m_shaderCacheDir.clear();
+  m_iccCacheDir.clear();
+
   m_gpu = nullptr;
 
   if (m_bConfigured)
