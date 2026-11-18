@@ -468,8 +468,6 @@ bool CPlaceboRendererGL::InitPlacebo()
   if (m_opengl)
     return true;
 
-  CGLStateGuard stateGuard;
-
   struct pl_log_params logParams = 
   {
     .log_cb = logCallback,
