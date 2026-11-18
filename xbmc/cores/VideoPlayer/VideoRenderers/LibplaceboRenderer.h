@@ -155,6 +155,10 @@ protected:
 
   bool InitPlacebo();
 
+  // Icc Profile
+  void InitIcc();
+  void CheckIccParams();
+
   int m_iYUVRenderBuffer = 0;
   int m_NumYUVBuffers = 0;
 
@@ -200,4 +204,10 @@ protected:
   int m_lastRenderedField = -1;
   CRect m_lastRenderDest;
   unsigned int m_renderAlpha = 255;
+
+  // ICC color management
+  pl_icc_object m_iccProfile = nullptr;
+  pl_icc_params m_iccParams = {};
+  std::string m_iccPath = {};
+  int m_iccLutSize = 0;
 };

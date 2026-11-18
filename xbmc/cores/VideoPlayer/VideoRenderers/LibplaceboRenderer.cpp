@@ -10,6 +10,8 @@
 #include "utils/log.h"
 #include "windowing/GraphicContext.h"
 #include "windowing/WinSystem.h"
+#include "settings/SettingsComponent.h"
+#include "settings/Settings.h"
 
 #include <cmath>
 
@@ -122,6 +124,25 @@ private:
   GLboolean m_depthTest = GL_FALSE;
   GLboolean m_cullFace = GL_FALSE;
 };
+
+std::vector<uint8_t> ReadFile(const std::string& path)
+{
+  std::ifstream file(path, std::ios::binary | std::ios::ate);
+  if (!file)
+    return {};
+
+  const std::streamsize size = file.tellg();
+  if (size <= 0)
+    return {};
+
+  std::vector<uint8_t> data(static_cast<size_t>(size));
+
+  file.seekg(0, std::ios::beg);
+  if (!file.read(reinterpret_cast<char*>(data.data()), size))
+    return {};
+
+  return data;
+}
 } // namespace
 
 CPlaceboRendererGL::CPictureBuffer::CPictureBuffer()
@@ -241,6 +262,98 @@ static void logCallback(void* priv, enum pl_log_level logLevel, const char* logM
   }
 }
 
+void CPlaceboRendererGL::InitIcc()
+{
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  if (!settings->GetBool("videoscreen.cmsenabled"))
+  {
+    return;
+  }
+
+  m_iccPath = settings->GetString("videoscreen.displayprofile");
+  if (m_iccPath.empty())
+  {
+    return;
+  }
+
+  const std::vector<uint8_t> iccData = ReadFile(m_iccPath);
+  if (iccData.empty())
+  {
+    CLog::Log(LOGWARNING, "Failed to read ICC profile: {}", m_iccPath);
+    return;
+  }
+  pl_icc_profile p = 
+  {
+    .data = iccData.data(),
+    .len = iccData.size(),
+    .signature = 0
+  };
+  pl_icc_profile_compute_signature(&p);
+
+  m_iccLutSize = 1 << settings->GetInt("videoscreen.cmslutsize");
+  m_iccParams.size_r = m_iccParams.size_g = m_iccParams.size_b = m_iccLutSize;
+  m_iccParams.use_vcgt = true;
+  m_iccParams.vcgt_size = 256;
+  m_iccParams.intent = PL_INTENT_RELATIVE_COLORIMETRIC;
+
+  if (!pl_icc_update(m_log, &m_iccProfile, &p, &m_iccParams))
+  {
+    CLog::Log(LOGWARNING, "Failed to open ICC Profile");
+    m_iccPath.clear();
+    m_iccLutSize = 0;
+    return;
+  }
+}
+
+void CPlaceboRendererGL::CheckIccParams()
+{
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  std::string path = settings->GetString("videoscreen.displayprofile");
+  int lutSize = 1 << settings->GetInt("videoscreen.cmslutsize");
+
+  if (path.empty())
+  {
+    if (m_iccProfile)
+    {
+      pl_icc_close(&m_iccProfile);
+      m_iccProfile = nullptr;
+    }
+    m_iccPath.clear();
+    m_iccLutSize = 0;
+    return;
+  }
+  if (path == m_iccPath && lutSize == m_iccLutSize)
+  {
+    return;
+  }
+
+  const std::vector<uint8_t> iccData = ReadFile(m_iccPath);
+  if (iccData.empty())
+  {
+    CLog::Log(LOGWARNING, "Failed to read ICC profile: {}", m_iccPath);
+    return;
+  }
+  pl_icc_profile p = 
+  {
+    .data = iccData.data(),
+    .len = iccData.size(),
+    .signature = 0
+  };
+  pl_icc_profile_compute_signature(&p);
+
+  m_iccLutSize = lutSize;
+  m_iccParams.size_r = m_iccParams.size_g = m_iccParams.size_b = m_iccLutSize;
+  m_iccParams.intent = PL_INTENT_RELATIVE_COLORIMETRIC;
+  m_iccParams.use_vcgt = true;
+
+  if (!pl_icc_update(m_log, &m_iccProfile, &p, &m_iccParams))
+  {
+    CLog::Log(LOGWARNING, "Failed to update icc profile");
+    m_iccPath.clear();
+    m_iccLutSize = 0;
+  }
+}
+
 bool CPlaceboRendererGL::InitPlacebo()
 {
   if (m_opengl)
@@ -276,6 +389,8 @@ bool CPlaceboRendererGL::InitPlacebo()
     CLog::Log(LOGERROR, "PlaceboRendererGL::InitPlacebo: Renderer initialisation failed");
     return false;
   }
+
+  InitIcc();
 
   return true;
 }
@@ -811,6 +926,8 @@ void CPlaceboRendererGL::UnInit()
     pl_opengl_destroy(&m_opengl);
   if (m_log)
     pl_log_destroy(&m_log);
+  if (m_iccProfile)
+    pl_icc_close(&m_iccProfile);
   m_gpu = nullptr;
 
   if (m_bConfigured)
@@ -1583,6 +1700,7 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
   const int fieldIdx = (field == FIELD_FULL) ? FIELD_FULL : field;
 
   CheckVideoParameters(index);
+  CheckIccParams();
 
   CGLStateGuard stateGuard;
 
@@ -1758,6 +1876,8 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
 
     target_frame.crop = {m_destRect.x1, m_destRect.y1, 
                          m_destRect.x2, m_destRect.y2};
+
+    target_frame.icc = m_iccProfile;
 
     pl_color_repr target_repr = {};
     target_repr.sys = PL_COLOR_SYSTEM_RGB;
