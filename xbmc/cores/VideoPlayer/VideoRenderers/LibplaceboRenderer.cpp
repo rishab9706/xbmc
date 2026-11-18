@@ -1586,7 +1586,7 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
 
   CGLStateGuard stateGuard;
 
-  if (!EnsureRenderTarget(width, height))
+  if (!EnsureRenderTarget())
     return;
 
   // The expensive libplacebo passes only need to run when the frame or the
@@ -1750,11 +1750,14 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
     pl_frame target_frame = {};
     target_frame.num_planes = 1;
     target_frame.planes[0].texture = m_targetTex;
-    target_frame.planes[0].flipped = false;
+    target_frame.planes[0].flipped = true;
     target_frame.planes[0].components = 3;
     target_frame.planes[0].component_mapping[0] = PL_CHANNEL_R;
     target_frame.planes[0].component_mapping[1] = PL_CHANNEL_G;
     target_frame.planes[0].component_mapping[2] = PL_CHANNEL_B;
+
+    target_frame.crop = {m_destRect.x1, m_destRect.y1, 
+                         m_destRect.x2, m_destRect.y2};
 
     pl_color_repr target_repr = {};
     target_repr.sys = PL_COLOR_SYSTEM_RGB;
@@ -1863,109 +1866,46 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
     m_lastRenderedField = fieldIdx;
     m_lastRenderDest = m_destRect;
   }
-
-  stateGuard.Restore();
-  DrawVideoQuad();
 }
 
-bool CPlaceboRendererGL::EnsureRenderTarget(int width, int height)
+bool CPlaceboRendererGL::EnsureRenderTarget()
 {
-  if (m_targetTex && m_targetWidth == width && m_targetHeight == height)
+  GLint currentFbo = 0;
+  glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &currentFbo);
+
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+
+  const int backbufferWidth = viewport[2];
+  const int backbufferHeight = viewport[3];
+
+  if (m_targetTex &&
+      m_targetWidth == backbufferWidth &&
+      m_targetHeight == backbufferHeight)
+  {
     return true;
+  }
 
   if (m_targetTex)
     pl_tex_destroy(m_gpu, &m_targetTex);
 
-  if (!m_targetFbo.IsValid() && !m_targetFbo.Initialize())
-  {
-    CLog::Log(LOGERROR, "PlaceboRendererGL: Failed to create render target");
-    return false;
-  }
-
-  if (!m_targetFbo.CreateAndBindToTexture(GL_TEXTURE_2D, width, height, GL_RGBA, GL_UNSIGNED_BYTE,
-                                          GL_LINEAR))
-  {
-    CLog::Log(LOGERROR, "PlaceboRendererGL: Failed to allocate {}x{} render target", width,
-              height);
-    return false;
-  }
-
-  pl_opengl_wrap_params params{};
-  params.framebuffer = m_targetFbo.FBO();
-  params.width = width;
-  params.height = height;
+  pl_opengl_wrap_params params = {};
+  params.framebuffer = currentFbo;
+  params.width = backbufferWidth;
+  params.height = backbufferHeight;
 
   m_targetTex = pl_opengl_wrap(m_gpu, &params);
   if (!m_targetTex)
   {
-    CLog::Log(LOGERROR, "PlaceboRendererGL: Failed to wrap render target");
+    CLog::Log(LOGERROR, "PlaceboRendererGL: Failed to wrap backbuffer");
     return false;
   }
 
-  m_targetWidth = width;
-  m_targetHeight = height;
+  m_targetWidth = backbufferWidth;
+  m_targetHeight = backbufferHeight;
+
   m_renderDirty = true;
   return true;
-}
-
-void CPlaceboRendererGL::DrawVideoQuad()
-{
-  if (!m_targetFbo.IsBound() || !m_targetFbo.Texture())
-    return;
-
-  struct PackedVertex
-  {
-    float x, y, z;
-    float u, v;
-  };
-
-  const PackedVertex vertex[4] = {
-      {m_destRect.x1, m_destRect.y1, 0.0f, 0.0f, 0.0f},
-      {m_destRect.x2, m_destRect.y1, 0.0f, 1.0f, 0.0f},
-      {m_destRect.x2, m_destRect.y2, 0.0f, 1.0f, 1.0f},
-      {m_destRect.x1, m_destRect.y2, 0.0f, 0.0f, 1.0f},
-  };
-  static const GLubyte idx[4] = {0, 1, 3, 2};
-
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, m_targetFbo.Texture());
-
-  m_renderSystem->EnableShader(ShaderMethodGL::SM_TEXTURE);
-  const GLint posLoc = m_renderSystem->ShaderGetPos();
-  const GLint texLoc = m_renderSystem->ShaderGetCoord0();
-  const GLint colLoc = m_renderSystem->ShaderGetUniCol();
-  const GLint depthLoc = m_renderSystem->ShaderGetDepth();
-
-  glUniform4f(colLoc, 1.0f, 1.0f, 1.0f, m_renderAlpha / 255.0f);
-  glUniform1f(depthLoc, 0.0f);
-
-  GLuint vertexVbo = 0;
-  glGenBuffers(1, &vertexVbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vertexVbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), vertex, GL_STATIC_DRAW);
-
-  glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, sizeof(PackedVertex),
-                        reinterpret_cast<const GLvoid*>(offsetof(PackedVertex, x)));
-  glVertexAttribPointer(texLoc, 2, GL_FLOAT, GL_FALSE, sizeof(PackedVertex),
-                        reinterpret_cast<const GLvoid*>(offsetof(PackedVertex, u)));
-  glEnableVertexAttribArray(posLoc);
-  glEnableVertexAttribArray(texLoc);
-
-  GLuint indexVbo = 0;
-  glGenBuffers(1, &indexVbo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexVbo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(idx), idx, GL_STATIC_DRAW);
-
-  glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, nullptr);
-
-  glDisableVertexAttribArray(texLoc);
-  glDisableVertexAttribArray(posLoc);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glDeleteBuffers(1, &indexVbo);
-  glDeleteBuffers(1, &vertexVbo);
-
-  m_renderSystem->DisableShader();
 }
 
 pl_tex CPlaceboRendererGL::WrapGLTexture(CYuvPlane& plane)

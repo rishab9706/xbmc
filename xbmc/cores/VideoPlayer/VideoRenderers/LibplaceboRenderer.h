@@ -151,8 +151,7 @@ protected:
 
   pl_tex WrapGLTexture(CYuvPlane& plane);
   void DestroyWrappedTextures(CPictureBuffer& buf);
-  bool EnsureRenderTarget(int width, int height);
-  void DrawVideoQuad();
+  bool EnsureRenderTarget();
 
   bool InitPlacebo();
 
