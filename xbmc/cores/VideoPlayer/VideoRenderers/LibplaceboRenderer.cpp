@@ -620,6 +620,7 @@ void CPlaceboRendererGL::AddVideoPicture(const VideoPicture &picture, int index)
   buf.lightMetadata = picture.lightMetadata;
   if (picture.hasLightMetadata && picture.lightMetadata.MaxCLL)
     buf.hasLightMetadata = picture.hasLightMetadata;
+  buf.doviMetadata = picture.doviMetadata;
 }
 
 void CPlaceboRendererGL::ReleaseBuffer(int idx)
@@ -2005,6 +2006,15 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
       avHdr.clm = &buf.lightMetadata;
     }
     pl_map_hdr_metadata(&csp.hdr, &avHdr);
+
+    // Dovi Metadata
+    pl_dovi_metadata dovi = {};
+    if (!buf.doviMetadata.empty())
+    {
+      pl_map_avdovi_metadata(
+          &csp, &repr, &dovi,
+          reinterpret_cast<const AVDOVIMetadata*>(buf.doviMetadata.data()));
+    }
 
     frame.repr = repr;
     frame.color = csp;

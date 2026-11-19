@@ -24,6 +24,8 @@ extern "C" {
 #include <libplacebo/renderer.h>
 }
 
+#include <vector>
+
 class CRenderSystemGL;
 
 #define FIELD_FULL 0
@@ -102,6 +104,7 @@ protected:
     AVMasteringDisplayMetadata displayMetadata;
     bool hasLightMetadata = false;
     AVContentLightMetadata lightMetadata;
+    std::vector<uint8_t> doviMetadata;
   };
 
   bool Render(unsigned int flags, int renderBuffer);

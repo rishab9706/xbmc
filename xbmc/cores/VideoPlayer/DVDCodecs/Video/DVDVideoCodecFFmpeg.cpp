@@ -1224,12 +1224,17 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
           m_hints.dovi.dv_profile, m_hints.dovi.dv_bl_signal_compatibility_id, std::move(rpu)});
   }
 
+  pVideoPicture->doviMetadata.clear();
   if (pVideoPicture->hdrType == StreamHdrType::HDR_TYPE_DOLBYVISION)
   {
     sd = av_frame_get_side_data(m_pFrame, AV_FRAME_DATA_DOVI_METADATA);
     if (sd)
     {
-      AVDOVIMetadata* dovi = (AVDOVIMetadata*)sd->data;
+      // AVDOVIMetadata only holds offsets into the side data buffer, so copy
+      // the whole payload rather than the struct.
+      pVideoPicture->doviMetadata.assign(sd->data, sd->data + sd->size);
+      const auto* dovi =
+          reinterpret_cast<const AVDOVIMetadata*>(pVideoPicture->doviMetadata.data());
       const AVDOVIRpuDataHeader* hdr = av_dovi_get_header(dovi);
       const AVDOVIDataMapping* mapping = av_dovi_get_mapping(dovi);
 

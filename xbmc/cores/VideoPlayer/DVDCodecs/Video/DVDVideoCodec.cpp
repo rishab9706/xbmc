@@ -58,6 +58,7 @@ void VideoPicture::Reset()
 
   hasDisplayMetadata = false;
   hasLightMetadata = false;
+  doviMetadata.clear();
 
   iWidth = 0;
   iHeight = 0;
