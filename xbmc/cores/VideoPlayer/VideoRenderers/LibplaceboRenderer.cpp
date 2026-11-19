@@ -620,6 +620,8 @@ void CPlaceboRendererGL::AddVideoPicture(const VideoPicture &picture, int index)
   buf.lightMetadata = picture.lightMetadata;
   if (picture.hasLightMetadata && picture.lightMetadata.MaxCLL)
     buf.hasLightMetadata = picture.hasLightMetadata;
+  buf.hasDynamicMetadata = picture.hasDynamicMetadata;
+  buf.dynamicMetadata = picture.dynamicMetadata;
   buf.doviMetadata = picture.doviMetadata;
 }
 
@@ -2004,6 +2006,10 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
     if (buf.hasLightMetadata)
     {
       avHdr.clm = &buf.lightMetadata;
+    }
+    if (buf.hasDynamicMetadata)
+    {
+      avHdr.dhp = &buf.dynamicMetadata;
     }
     pl_map_hdr_metadata(&csp.hdr, &avHdr);
 

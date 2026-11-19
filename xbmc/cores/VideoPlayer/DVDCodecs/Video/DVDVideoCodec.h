@@ -18,6 +18,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/mastering_display_metadata.h>
 #include <libavutil/dovi_meta.h>
+#include <libavutil/hdr_dynamic_metadata.h>
 }
 
 #include <map>
@@ -97,6 +98,8 @@ public:
   AVMasteringDisplayMetadata displayMetadata;
   bool hasLightMetadata = false;
   AVContentLightMetadata lightMetadata;
+  bool hasDynamicMetadata = false;
+  AVDynamicHDRPlus dynamicMetadata;
   std::vector<uint8_t> doviMetadata;
 
   AVPixelFormat pixelFormat; //< source pixel format

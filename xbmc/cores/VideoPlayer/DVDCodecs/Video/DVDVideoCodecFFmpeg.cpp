@@ -1257,6 +1257,7 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
     }
   }
 
+  pVideoPicture->hasDynamicMetadata = false;
   if (pVideoPicture->hdrType == StreamHdrType::HDR_TYPE_HDR10 ||
       pVideoPicture->hdrType == StreamHdrType::HDR_TYPE_DOLBYVISION)
   {
@@ -1267,6 +1268,8 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
         pVideoPicture->hdrType = StreamHdrType::HDR_TYPE_HDR10PLUS;
       else
         pVideoPicture->hdrTypeAlt = StreamHdrType::HDR_TYPE_HDR10PLUS;
+      pVideoPicture->hasDynamicMetadata = true;
+      pVideoPicture->dynamicMetadata = *(AVDynamicHDRPlus *)sd->data;
     }
   }
 

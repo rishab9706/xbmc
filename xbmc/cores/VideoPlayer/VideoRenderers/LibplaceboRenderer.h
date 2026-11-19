@@ -18,6 +18,7 @@
 
 extern "C" {
 #include <libavutil/mastering_display_metadata.h>
+#include <libavutil/hdr_dynamic_metadata.h>
 #include <libavutil/pixdesc.h>
 #include <libplacebo/cache.h>
 #include <libplacebo/opengl.h>
@@ -104,6 +105,8 @@ protected:
     AVMasteringDisplayMetadata displayMetadata;
     bool hasLightMetadata = false;
     AVContentLightMetadata lightMetadata;
+    bool hasDynamicMetadata = false;
+    AVDynamicHDRPlus dynamicMetadata;
     std::vector<uint8_t> doviMetadata;
   };
 
