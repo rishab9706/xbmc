@@ -16,7 +16,6 @@
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h"
 #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.h"
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
-#include "cores/VideoPlayer/VideoRenderers/LibplaceboRenderer.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "rendering/gles/ScreenshotSurfaceGLES.h"
 #include "utils/BufferObjectFactory.h"
@@ -44,7 +43,6 @@ bool CWinSystemWaylandEGLContextGLES::InitWindowSystem()
     return false;
   }
 
-  CPlaceboRendererGL::Register();
   CLinuxRendererGLES::Register();
 
   CDVDVideoCodecDRMPRIME::Register();

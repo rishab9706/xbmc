@@ -17,6 +17,7 @@
 #include "windowing/WinSystem.h"
 #include "settings/SettingsComponent.h"
 #include "settings/Settings.h"
+#include "ColorManager.h"
 
 #include <algorithm>
 #include <cmath>
@@ -320,8 +321,18 @@ static void logCallback(void* priv, enum pl_log_level logLevel, const char* logM
 
 void CPlaceboRendererGL::InitIcc()
 {
+  if (m_iccProfile)
+  {
+    return;
+  }
+
   const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
   if (!settings->GetBool("videoscreen.cmsenabled"))
+  {
+    return;
+  }
+
+  if (settings->GetInt("videoscreen.cmsmode") != CMS_MODE_PROFILE)
   {
     return;
   }
@@ -371,7 +382,9 @@ void CPlaceboRendererGL::CheckIccParams()
   std::string path = settings->GetString("videoscreen.displayprofile");
   int lutSize = 1 << settings->GetInt("videoscreen.cmslutsize");
 
-  if (path.empty())
+  if (settings->GetInt("videoscreen.cmsmode") != CMS_MODE_PROFILE || 
+      !settings->GetBool("videoscreen.cmsenabled") ||
+      path.empty())
   {
     if (m_iccProfile)
     {
@@ -380,17 +393,27 @@ void CPlaceboRendererGL::CheckIccParams()
     }
     m_iccPath.clear();
     m_iccLutSize = 0;
+    m_renderDirty = true;
     return;
   }
+
   if (path == m_iccPath && lutSize == m_iccLutSize)
   {
     return;
   }
 
-  const std::vector<uint8_t> iccData = ReadFile(m_iccPath);
+  const std::vector<uint8_t> iccData = ReadFile(path);
   if (iccData.empty())
   {
-    CLog::Log(LOGWARNING, "Failed to read ICC profile: {}", m_iccPath);
+    CLog::Log(LOGWARNING, "Failed to read ICC profile: {}", path);
+    if (m_iccProfile)
+    {
+      pl_icc_close(&m_iccProfile);
+      m_iccProfile = nullptr;
+    }
+    m_iccPath.clear();
+    m_iccLutSize = 0;
+    m_renderDirty = true;
     return;
   }
   pl_icc_profile p = 
@@ -401,10 +424,12 @@ void CPlaceboRendererGL::CheckIccParams()
   };
   pl_icc_profile_compute_signature(&p);
 
+  m_iccPath = path;
   m_iccLutSize = lutSize;
   m_iccParams.size_r = m_iccParams.size_g = m_iccParams.size_b = m_iccLutSize;
   m_iccParams.intent = PL_INTENT_RELATIVE_COLORIMETRIC;
   m_iccParams.use_vcgt = true;
+  m_iccParams.vcgt_size = 256;
   if (m_iccCache)
   {
     m_iccParams.cache = m_iccCache;
@@ -415,7 +440,10 @@ void CPlaceboRendererGL::CheckIccParams()
     CLog::Log(LOGWARNING, "Failed to update icc profile");
     m_iccPath.clear();
     m_iccLutSize = 0;
+    return;
   }
+
+  m_renderDirty = true;
 }
 
 void CPlaceboRendererGL::InitCache()

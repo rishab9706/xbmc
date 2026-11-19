@@ -20,7 +20,6 @@
 #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIME.h"
 #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.h"
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
-#include "cores/VideoPlayer/VideoRenderers/LibplaceboRenderer.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
@@ -66,7 +65,7 @@ bool CWinSystemGbmGLESContext::InitWindowSystem()
 {
   VIDEOPLAYER::CRendererFactory::ClearRenderer();
   CDVDFactoryCodec::ClearHWAccels();
-  CPlaceboRendererGL::Register();
+
   CLinuxRendererGLES::Register();
   RETRO::CRPProcessInfoGbm::Register();
   RETRO::CRPProcessInfoGbm::RegisterRendererFactory(new RETRO::CRendererFactoryDMAOpenGLES);

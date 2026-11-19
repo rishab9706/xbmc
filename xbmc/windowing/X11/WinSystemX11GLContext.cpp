@@ -22,7 +22,9 @@
 #include "cores/VideoPlayer/Process/X11/ProcessInfoX11.h"
 #include "cores/VideoPlayer/VideoReferenceClock.h"
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
+#if defined(HAS_PLACEBO)
 #include "cores/VideoPlayer/VideoRenderers/LibplaceboRenderer.h"
+#endif
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "guilib/DispResource.h"
 #include "rendering/gl/ScreenshotSurfaceGL.h"

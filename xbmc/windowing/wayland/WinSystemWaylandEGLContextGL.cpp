@@ -14,7 +14,9 @@
 #include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererFBO.h"
 #include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererOpenGL.h"
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
+#if defined(HAS_PLACEBO)
 #include "cores/VideoPlayer/VideoRenderers/LibplaceboRenderer.h"
+#endif
 #include "rendering/gl/ScreenshotSurfaceGL.h"
 #include "utils/BufferObjectFactory.h"
 #include "utils/DMAHeapBufferObject.h"
