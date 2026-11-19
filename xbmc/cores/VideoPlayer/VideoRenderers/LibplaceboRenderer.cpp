@@ -1961,34 +1961,7 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
       repr.bits.color_depth = desc->comp[0].depth;
       repr.bits.bit_shift = desc->comp[0].shift;
     }
-
-    switch (buf.m_srcColSpace)
-    {
-      case AVCOL_SPC_RGB:
-        repr.sys = PL_COLOR_SYSTEM_RGB;
-        break;
-      case AVCOL_SPC_BT709:
-        repr.sys = PL_COLOR_SYSTEM_BT_709;
-        break;
-      case AVCOL_SPC_BT2020_NCL:
-        repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
-        break;
-      case AVCOL_SPC_BT2020_CL:
-        repr.sys = PL_COLOR_SYSTEM_BT_2020_C;
-        break;
-      case AVCOL_SPC_ICTCP:
-        repr.sys = PL_COLOR_SYSTEM_BT_2100_PQ;
-        break;
-      case AVCOL_SPC_SMPTE240M:
-        repr.sys = PL_COLOR_SYSTEM_SMPTE_240M;
-        break;
-      case AVCOL_SPC_YCGCO:
-        repr.sys = PL_COLOR_SYSTEM_YCGCO;
-        break;
-      default:
-        repr.sys = PL_COLOR_SYSTEM_BT_709;
-        break;
-    }
+    repr.sys = pl_system_from_av(buf.m_srcColSpace);
 
     pl_color_space csp = {};
     // Primaries
