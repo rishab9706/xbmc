@@ -233,6 +233,7 @@ bool CRendererPlaceboVAAPI::UploadTexture(int index)
       BindPbo(m_buffers[index]);
     }
     CalculateTextureSourceRects(index, 3);
+    m_renderDirty = true;
     return UploadNV12Texture(index);
   }
 

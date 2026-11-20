@@ -1169,6 +1169,7 @@ bool CPlaceboRendererGL::UploadTexture(int index)
   if (ret)
     CalculateTextureSourceRects(index, 3);
 
+  m_renderDirty = true;
   return ret;
 }
 
