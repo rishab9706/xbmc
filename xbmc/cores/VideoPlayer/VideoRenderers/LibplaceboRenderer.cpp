@@ -1963,13 +1963,23 @@ void CPlaceboRendererGL::RenderPlacebo(int index, int field)
       repr.bits.bit_shift = desc->comp[0].shift;
     }
     repr.sys = pl_system_from_av(buf.m_srcColSpace);
+    if (repr.sys == PL_COLOR_SYSTEM_UNKNOWN)
+    {
+      repr.sys = PL_COLOR_SYSTEM_BT_709;
+    }
 
+    // Colorspace
     pl_color_space csp = {};
-    // Primaries
     csp.primaries = pl_primaries_from_av(buf.m_srcPrimaries);
-
-    // Transfer characteristic
     csp.transfer = pl_transfer_from_av(buf.m_srcColTransfer);
+    if (csp.primaries == PL_COLOR_PRIM_UNKNOWN)
+    {
+      csp.primaries = PL_COLOR_PRIM_BT_709;
+    }
+    if (csp.transfer == PL_COLOR_TRC_UNKNOWN)
+    {
+      csp.transfer = PL_COLOR_TRC_BT_1886;
+    }
 
     // HDR Metadata
     pl_av_hdr_metadata avHdr = {};
